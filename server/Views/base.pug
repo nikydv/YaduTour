@@ -1,0 +1,30 @@
+doctype html
+html
+  head
+    block head
+      meta(charset='UTF-8')
+      meta(name='viewport' content='width=device-width, initial-scale=1.0')
+      //- meta(http-equiv='Content-Security-Policy', content='default-src')
+      link(rel='stylesheet' href='/css/style.css')
+      link(rel='shortcut icon' type='image/png' href='/img/favicon.png')
+      link(rel='stylesheet' href='https://fonts.googleapis.com/css?family=Lato:300,300i,700')
+      title YaduTour | #{title}
+  
+  body
+    // Header
+    include _header 
+
+    //Content
+    block content 
+      h1 This is placeholder
+
+    //Footer
+    include _footer  
+
+    //script-src(src='https://unpkg.com/axios/dist/axios.min.js' type="module") 
+    //script(src='/js/login.js') 
+    script(src='/js/bundle.js')   
+
+     
+
+     

@@ -87,7 +87,7 @@ exports.logIn = async (req, res, next)=>{
     
     //2. Check if id and password exists in Database:
     const user = await User.findOne({ email }).select('+password');
-    //console.log("User: ", user);
+    console.log("User: ", user);
 
     if(!user || !(await user.correctPassword(password, user.password)))
     {
@@ -104,10 +104,25 @@ exports.logIn = async (req, res, next)=>{
     createSendToken(user, 200, res);
 
     } catch (error) {
+        console.log("Error: ", error)
         next(new AppError('Something wrong while logginIn', 400));
     }
     
 }
+
+
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true
+  });
+
+//   res.status(200).render('login.pug'
+//   , {title: 'logIn'}
+//   );
+
+res.status(200).redirect('http://127.0.0.1:3000/')
+};
 
 exports.protect = async (req, res, next)=>{
     try 
@@ -117,7 +132,11 @@ exports.protect = async (req, res, next)=>{
        if(req.headers.authorization && req.headers.authorization.startsWith('Bearer'))
        {
         Token = req.headers.authorization.split(' ')[1];
+       }else if(req.cookies.jwt)
+       {
+        Token = req.cookies.jwt;
        }
+
        //console.log("Token: "+Token);
        if(!Token)
        {
@@ -126,7 +145,7 @@ exports.protect = async (req, res, next)=>{
 
        //2. Validate Token:
        const decoded = await promisify(jwt.verify)(Token, 'This-is-my-SECRETKey-for-securityy');
-       console.log(decoded);
+       //console.log(decoded);
 
        //3. Check if user exist:
        const freshUser = await User.findById(decoded.id);
@@ -135,8 +154,9 @@ exports.protect = async (req, res, next)=>{
            return next(new AppError("user for token doesn't exist", 401));
        }
        
-       //4. if user changed pass after receiving token:
+       //console.log('FreshUser: ', freshUser);
        req.user = freshUser;
+       res.locals.user = freshUser;
        next();
     } catch (error) 
     {
@@ -152,6 +172,41 @@ exports.protect = async (req, res, next)=>{
        
     }
 } 
+
+// Only for rendered pages, no errors!
+exports.isLoggedIn = async (req, res, next) => {
+    if (req.cookies.jwt) 
+    {
+      try {
+        //console.log("Inside loggedIn");
+        // 1) verify token
+        const decoded = await promisify(jwt.verify)(
+          req.cookies.jwt,
+          'This-is-my-SECRETKey-for-securityy'
+        );
+  
+        // 2) Check if user still exists
+        const currentUser = await User.findById(decoded.id);
+        if (!currentUser) {
+          return next();
+        }
+  
+        // 3) Check if user changed password after the token was issued
+        // if (currentUser.changedPasswordAfter(decoded.iat)) {
+        //   return next();
+        // }
+        
+        // THERE IS A LOGGED IN USER
+        //console.log("User: ", currentUser);
+        res.locals.user = currentUser;
+        return next();
+      } catch (err) {
+        return next();
+      }
+    }
+    // console.log("Not getting cookie");
+    next();
+  };
 
 exports.restictTo = (...roles) => {
     return (req, res, next) => {
@@ -248,42 +303,27 @@ exports.resetPassword = async (req, res, next) => {
 }
 
 exports.updatePassword = async (req, res, next) => {
-    //1. Get user from collection:
-        const {email, password, newPassword} = req.body;
-        const user = await User.findOne({email: email}).select('+password');
+    try 
+    {
+        // 1) Get user from collection
+        const user = await User.findById(req.user.id).select('+password');
 
-        if(!email || !password || !newPassword)
-        {
-            return next(new AppError('Pls provide email and/or password', 400));
+        // 2) Check if POSTed current password is correct
+        if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+            return next(new AppError('Your current password is wrong.', 401));
         }
 
-    //2. Check if posted current password in correct:
-        if(!user || !(await user.correctPassword(password, user.password)))
-        {
-            return next(new AppError('Incorrect email or password', 400));
-        }
-
-    try {
-        //3. if so update pass:
-        user.password = newPassword;
-        user.passwordConfirm = newPassword;
-        user.passwordChangedAt = Date.now();
+        // 3) If so, update password
+        user.password = req.body.password;
+        user.passwordConfirm = req.body.passwordConfirm;
         await user.save();
+        // User.findByIdAndUpdate will NOT work as intended!
 
-       //4. log in user and send JWT:
-    //    const token = signToken(user._id);
-    //    res.status(200).json({
-    //        status: 'success',
-    //        message: 'Password updated successfully',
-    //        token,
-    //        userData: {
-    //            user
-    //        }
-    //     });
-
-    createSendToken(user, 200, res);
+        // 4) Log user in, send JWT
+        createSendToken(user, 200, res);
 
     } catch (error) {
+        console.log("Error in updatePassword: ", error);
         next(new AppError('Errror while updating password', 404));
     }
 }

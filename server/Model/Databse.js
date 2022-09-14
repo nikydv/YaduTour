@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 
-    mongoose.connect('mongodb+srv://heyNik:***@cluster0.l0zap.mongodb.net/Tour?retryWrites=true&w=majority',
+dotenv.config({ path: '../../Congig.env' });
+
+    mongoose.connect('mongodb+srv://heyNik:8UBuZthmAUbB8jRg@cluster0.l0zap.mongodb.net/Tour?retryWrites=true&w=majority',
     {
         useNewUrlParser:true,
         useUnifiedTopology:true

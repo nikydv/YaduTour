@@ -13,6 +13,13 @@ router
 router
    .route('/:id')
    .get(tourController.getTour)
+   .patch(
+      authController.protect,
+      authController.restictTo('admin', 'lead-guide'),
+      tourController.uploadTourImages,
+      tourController.resizeTourImages,
+      tourController.updateTour
+    )
    .delete(
       authController.protect,
       authController.restictTo('admin', 'lead-guide'),

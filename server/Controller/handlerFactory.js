@@ -45,7 +45,7 @@ exports.updateOne = Model =>
 
     } catch (error) 
     {
-        next(new AppError('Getting error while updating Review: ', 404));
+        next(new AppError('Getting error while updating: ', 404));
     }
     
 };
